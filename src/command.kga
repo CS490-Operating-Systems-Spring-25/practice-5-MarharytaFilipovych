@@ -58,6 +58,7 @@ label modify_file
         copy var:char to REG_A
         write OP_INCR to REG_OP
         cpu_exec
+        copy REG_RES to var:char
 
         //concat it with read_line
         copy var:char to REG_A

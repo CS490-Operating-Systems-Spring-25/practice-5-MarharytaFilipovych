@@ -1,0 +1,187 @@
+// Initialize sys_stack_ptr to the top of memory
+write FREE_MEMORY_START to var:sys_stack_ptr
+
+// Helper variables for keyboard input handling
+var input_key
+
+// Set background color to cyan
+write COLOR_CYAN to DISPLAY_BACKGROUND
+write OP_SET_BACKGROUND_COLOR to REG_OP
+cpu_exec
+
+write "cccccccccccccccccccccccccccc" to 196
+write "cccccccccccccccccccccccccccc" to 197
+write "cccccccccccccccccccccccccccc" to 198
+write "ccccccccccyyyyyyyycccccccccc" to 199
+write "cccccccyyyyyyyyyyyyyycccccc" to 200
+write "cccccyyyyyyyyyyyyyyyyyyyycc" to 201
+write "ccccyyyyyyyyyyyyyyyyyyyyycc" to 202
+write "cccyyyyyyyyyyyyyyyyyyyycccc" to 203
+write "ccyyyyyyyyyyyyycccccccccccc" to 204
+write "ccyyyyyyyyyccccccccccccccc" to 205
+write "ccyyyyyyyyyyyyycccccccccccc" to 206
+write "cccyyyyyyyyyyyyyyyyyyyycccc" to 207
+write "ccccyyyyyyyyyyyyyyyyyyyyycc" to 208
+write "cccccyyyyyyyyyyyyyyyyyyyycc" to 209
+write "cccccccyyyyyyyyyyyyyycccccc" to 210
+write "ccccccccccyyyyyyyycccccccccc" to 211
+write "cccccccccccccccccccccccccccc" to 212
+write "cccccccccccccccccccccccccccc" to 213
+
+
+// Define starting and ending address and length for the bitmap
+var length
+write 28 to var:length
+var bitmap_start
+var bitmap_end
+write 196 to var:bitmap_start
+write 214 to var:bitmap_end  
+
+// Main program entry point
+label main_loop
+    // Render the current bitmap
+    copy var:bitmap_start to REG_A
+    copy var:bitmap_end to REG_B
+    write OP_RENDER_BITMAP to REG_OP
+    cpu_exec
+
+    // Read keyboard input silently
+    write KEYBOARD_READ_CHAR_SILENTLY to REG_A
+    write OP_READ_INPUT to REG_OP
+    cpu_exec
+    copy KEYBOARD_BUFFER to var:input_key
+
+    // Check if 'a' was pressed
+    copy var:input_key to REG_A
+    write "a" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:handle_left_shift
+
+    // Check if 'd' was pressed for right shift
+    copy var:input_key to REG_A
+    write "d" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:handle_right_shift
+
+    // Check if 'q' was pressed to exit
+    copy var:input_key to REG_A
+    write "q" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:exit_program
+
+    // Small delay before next input check
+    write "0.1" to REG_A
+    write OP_NOP to REG_OP
+    cpu_exec
+
+    jump label:main_loop
+
+// Handler for left shift ('a' key)
+
+
+var counter
+write 1 to var:counter
+var start
+var end
+copy var:bitmap_start to var:start
+copy var:bitmap_end to var:end    
+
+
+label handle_left_shift
+    copy *var:start to REG_A
+    copy PROGRAM_COUNTER to var:sys_return
+    jump label:left_shift  
+    copy REG_RES to *var:start
+
+    //increment start
+    copy var:start to REG_A
+    write OP_INCR to REG_OP
+    cpu_exec
+    copy REG_RES to var:start
+
+    copy var:start to REG_A
+    copy var:end to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if_not label:handle_left_shift
+
+    jump label:main_loop
+
+// Handler for right shift ('d' key)
+label handle_right_shift
+    copy *var:start to REG_A
+    copy PROGRAM_COUNTER to var:sys_return
+    jump label:right_shift
+
+    copy REG_RES to *var:start
+    
+    //increment start
+    copy var:start to REG_A
+    write OP_INCR to REG_OP
+    cpu_exec
+    copy REG_RES to var:start
+
+    copy var:start to REG_A
+    copy var:end to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if_not label:handle_right_shift
+
+    jump label:main_loop
+
+
+// Function to shift the bitmap left
+label left_shift
+     copy PROGRAM_COUNTER to var:sys_stack_return
+    jump label:sys_stack_push   
+    var line
+    copy *REG_A to var:line
+      
+    copy "c" to REG_B
+    write "" to REG_C
+    write OP_CONCAT_WITH to REG_OP
+    cpu_exec
+    // increment length of bitmap
+    copy var:length to REG_A
+    write OP_INCR to REG_OP
+    cpu_exec
+    copy REG_RES to var:length
+
+    //save new line
+    copy var:line to REG_RES
+    //finish
+    jump label:sys_stack_pop
+
+// Function to shift the bitmap right
+label right_shift
+    copy PROGRAM_COUNTER to var:sys_stack_return
+    jump label:sys_stack_push   
+    var line
+    copy *REG_A to var:line
+      
+
+    write "c" to REG_A
+    copy var:line to REG_B
+    write "" to REG_C
+    write OP_CONCAT_WITH to REG_OP
+    cpu_exec
+    // increment length of bitmap
+    copy var:length to REG_A
+    write OP_INCR to REG_OP
+    cpu_exec
+    copy REG_RES to var:length
+
+    //save new line
+    copy var:line to REG_RES
+    //finish
+    jump label:sys_stack_pop
+
+// Exit program handler
+label exit_program
+    // Halt the CPU
+    write OP_HALT to REG_OP
+    cpu_exec
+
