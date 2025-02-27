@@ -1,5 +1,6 @@
+label kernel_entry_point
 // Initialize sys_stack_ptr to the top of memory
-write FREE_MEMORY_START to var:sys_stack_ptr
+copy FREE_MEMORY_START to var:sys_stack_ptr
 
 // Helper variables for keyboard input handling
 var input_key
@@ -115,7 +116,6 @@ label handle_right_shift
     copy *var:start to REG_A
     copy PROGRAM_COUNTER to var:sys_return
     jump label:right_shift
-
     copy REG_RES to *var:start
     
     //increment start
@@ -137,13 +137,14 @@ label handle_right_shift
 label left_shift
      copy PROGRAM_COUNTER to var:sys_stack_return
     jump label:sys_stack_push   
-    var line
-    copy *REG_A to var:line
+    var line_left
+    copy *REG_A to var:line_left
       
-    copy "c" to REG_B
+    write "c" to REG_B
     write "" to REG_C
     write OP_CONCAT_WITH to REG_OP
     cpu_exec
+    copy REG_RES to var:line_left
     // increment length of bitmap
     copy var:length to REG_A
     write OP_INCR to REG_OP
@@ -151,7 +152,7 @@ label left_shift
     copy REG_RES to var:length
 
     //save new line
-    copy var:line to REG_RES
+    copy var:line_left to REG_RES
     //finish
     jump label:sys_stack_pop
 
@@ -159,15 +160,16 @@ label left_shift
 label right_shift
     copy PROGRAM_COUNTER to var:sys_stack_return
     jump label:sys_stack_push   
-    var line
-    copy *REG_A to var:line
+    var line_right
+    copy *REG_A to var:line_right
       
-
     write "c" to REG_A
-    copy var:line to REG_B
+    copy var:line_right to REG_B
     write "" to REG_C
     write OP_CONCAT_WITH to REG_OP
     cpu_exec
+    copy REG_RES to var:line_right
+
     // increment length of bitmap
     copy var:length to REG_A
     write OP_INCR to REG_OP
@@ -175,13 +177,16 @@ label right_shift
     copy REG_RES to var:length
 
     //save new line
-    copy var:line to REG_RES
+    copy var:line_right to REG_RES
     //finish
     jump label:sys_stack_pop
 
 // Exit program handler
 label exit_program
-    // Halt the CPU
+    write "Good bye!" to DISPLAY_BUFFER
+    write COLOR_GREEN to DISPLAY_COLOR
+    write OP_DISPLAY_LN to REG_OP
+    cpu_exec
     write OP_HALT to REG_OP
     cpu_exec
 
