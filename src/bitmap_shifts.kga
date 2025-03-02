@@ -214,31 +214,25 @@ label handle_right_shift
 
 // Function to shift the bitmap left
 label left_shift
-     copy PROGRAM_COUNTER to var:sys_stack_return
+    copy PROGRAM_COUNTER to var:sys_stack_return
     jump label:sys_stack_push   
     var line_left
     copy REG_A to var:line_left
-      
+
+    copy var:line_left to REG_A  
+    write 1 to REG_B
+    write "" to REG_C
+    write "" to REG_D 
+    write OP_REPLACE_COLUMN to REG_OP
+    cpu_exec
+    copy REG_RES to var:line_left
+
+    copy var:line_left to REG_A
     write "c" to REG_B
     write "" to REG_C
     write OP_CONCAT_WITH to REG_OP
     cpu_exec
     copy REG_RES to var:line_left
-    // increment length of bitmap
-    copy var:length to REG_A
-    write OP_INCR to REG_OP
-    cpu_exec
-    copy REG_RES to var:length
-
-    //save new line
-    copy var:line_left to REG_RES
-    //finish
-    jump label:sys_stack_pop
-
-// Function to shift the bitmap right
-label right_shift
-    copy PROGRAM_COUNTER to var:sys_stack_return
-    jump label:sys_stack_push   
     var line_right
     copy REG_A to var:line_right
       
