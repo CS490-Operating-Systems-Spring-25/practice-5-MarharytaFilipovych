@@ -65,6 +65,9 @@ cpu_exec
     var catStr
     write "cat" to var:catStr
 
+    var modify
+    write "modify" to var:modify
+
 label kernel_start
     // Display prompt to enter the value:
     copy var:sys_work_dir to DISPLAY_BUFFER
@@ -121,6 +124,12 @@ label kernel_start
     write OP_CMP_EQ to REG_OP
     cpu_exec
     jump_if label:cat_command
+
+    copy var:parsedStr to REG_A
+    copy var:modify to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:modify_file_function
 
     jump label:kernel_start
 
@@ -179,6 +188,100 @@ label cat_command
         jump label:sys_fs_close
         jump label:kernel_start
 
+
+
+label modify_file_function
+    copy PROGRAM_COUNTER to var:sys_stack_return
+    jump label:sys_stack_push
+    //open a file
+    copy PROGRAM_COUNTER to var:sys_return
+    jump label:sys_fs_open
+    copy REG_RES to var:file_descriptor
+    // Read it line by line:
+    write 1 to var:counter
+    label read_file_modify
+        copy var:file_descriptor to REG_A
+        copy var:counter to REG_B
+        copy PROGRAM_COUNTER to var:sys_return
+        jump label:sys_fs_read
+        jump_err label:close_modify
+
+        // get first line
+        copy REG_RES to var:read_line
+
+        // successful read
+        copy REG_ERROR to REG_A
+        write "" to REG_B
+        write OP_CMP_EQ to REG_OP
+        cpu_exec
+        jump_if label:modify_fun
+
+        //end_of_file
+        copy REG_RES to REG_A
+        write "EOF" to REG_B
+        write OP_CMP_EQ to REG_OP
+        cpu_exec
+        jump_if_not label:error_modify
+        jump_if label:eof_modify
+
+    label modify_fun
+    // extract first char
+        copy var:read_line to REG_A
+        write 1 to REG_B
+        write "" to REG_C
+        cpu_exec
+        copy REG_RES to var:char
+        // check if char is number
+        copy var:char to REG_A
+        write OP_IS_NUM to REG_OP
+        cpu_exec
+        jump_if_not label:increment_counter
+
+        //increment
+        copy var:char to REG_A
+        write OP_INCR to REG_OP
+        cpu_exec
+        copy REG_RES to var:char
+
+        //concat it with read_line
+        copy var:char to REG_A
+        copy var:read_line to REG_B
+        write "" to REG_C
+        write OP_CONCAT_WITH to REG_OP
+        cpu_exec
+        copy REG_RES to var:modified_line
+
+    label write_to_file_modify
+        copy var:file_descriptor to REG_A
+        copy var:counter to REG_B
+        copy var:modified_line to REG_C
+        copy PROGRAM_COUNTER to var:sys_return
+        jump label:sys_fs_write
+        jump label:increment_counter_modify
+    
+    label increment_counter_modify
+        copy var:counter to REG_A
+        write OP_INCR to REG_OP
+        cpu_exec
+        copy REG_RES to var:counter
+        jump label:read_file_modify
+
+    label eof_modify
+        write "1" to REG_RES
+        write "" to REG_ERROR
+        jump label:close
+
+    label error_modify
+        write "0" to REG_RES
+        write "ERROR" to REG_ERROR
+        jump label:close
+
+    label close_modify
+        copy var:file_descriptor to REG_A
+        copy PROGRAM_COUNTER to var:sys_return
+        jump label:sys_fs_close 
+        jump label:sys_stack_pop
+    
 
 label kernel_end
     copy REG_ERROR to DISPLAY_BUFFER
