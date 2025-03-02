@@ -1,8 +1,17 @@
+// label kernel_entry_point
+// // Initialize sys_stack_ptr to the top of memory
+// copy FREE_MEMORY_START to var:sys_stack_ptr
+// copy FREE_MEMORY_START to REG_A
+// write OP_INCR to REG_OP
+// cpu_exec
+// copy REG_RES to FREE_MEMORY_START
 // REG_A should contain the path to file that should be open. it may be absolute or relative path(sys_work_dir will be appended to it automatically)
 //copy PROGRAM_COUNTER to var:sys_return
 //jump label:modify_file
 //reg_res will contain 1 and reg_error will contain nothing if modification successeded
 //reg_res will contain 0 and reg_error will contain word ERROR if otherwise
+var read_line
+
 label modify_file
     copy PROGRAM_COUNTER to var:sys_stack_return
     jump label:sys_stack_push
@@ -22,7 +31,6 @@ label modify_file
         jump_err label:close
 
         // get first line
-        var read_line
         copy REG_RES to var:read_line
 
         // successful read
@@ -34,15 +42,15 @@ label modify_file
 
         //end_of_file
         copy REG_RES to REG_A
-        copy "EOF" to REG_B
+        write "EOF" to REG_B
         write OP_CMP_EQ to REG_OP
         cpu_exec
         jump_if_not label:error
-        jum_if label:eof
+        jump_if label:eof
 
     label modify
     // extract first char
-        copy var:readline to REG_A
+        copy var:read_line to REG_A
         write 1 to REG_B
         write "" to REG_C
         cpu_exec
