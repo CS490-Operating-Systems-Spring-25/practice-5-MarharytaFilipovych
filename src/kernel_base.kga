@@ -194,8 +194,10 @@ label modify_file_function
     copy PROGRAM_COUNTER to var:sys_stack_return
     jump label:sys_stack_push
     //open a file
+    copy var:parsedArg1 to REG_A
     copy PROGRAM_COUNTER to var:sys_return
     jump label:sys_fs_open
+    jump_err label:kernel_start
     copy REG_RES to var:file_descriptor
     // Read it line by line:
     write 1 to var:counter
@@ -229,6 +231,7 @@ label modify_file_function
         copy var:read_line to REG_A
         write 1 to REG_B
         write "" to REG_C
+        write OP_GET_COLUMN to REG_OP
         cpu_exec
         copy REG_RES to var:char
         // check if char is number
@@ -244,8 +247,9 @@ label modify_file_function
         copy REG_RES to var:char
 
         //concat it with read_line
-        copy var:char to REG_A
-        copy var:read_line to REG_B
+        copy var:char to REG_D
+        copy var:read_line to REG_A
+        write 1 to REG_B
         write "" to REG_C
         write OP_CONCAT_WITH to REG_OP
         cpu_exec
