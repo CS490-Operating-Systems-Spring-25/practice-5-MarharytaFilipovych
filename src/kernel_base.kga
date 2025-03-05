@@ -189,103 +189,110 @@ label cat_command
         jump label:kernel_start
 
 
-
 label modify_file_function
     copy PROGRAM_COUNTER to var:sys_stack_return
     jump label:sys_stack_push
-    //open a file
+
+    // Check if argument is provided
+    copy var:parsedArg1 to REG_A
+    write "" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:modify_file_error
+
+    // Open the file
+    var modify_file_descriptor
     copy var:parsedArg1 to REG_A
     copy PROGRAM_COUNTER to var:sys_return
     jump label:sys_fs_open
-    jump_err label:kernel_start
-    copy REG_RES to var:file_descriptor
-    // Read it line by line:
-    write 1 to var:counter
-    label read_file_modify
-        copy var:file_descriptor to REG_A
-        copy var:counter to REG_B
+    jump_err label:modify_file_error
+    copy REG_RES to var:modify_file_descriptor
+
+    // Process the file line by line
+    var modify_file_counter
+    write 1 to var:modify_file_counter
+    
+    label modify_file_read_loop
+        // Read current line
+        var modify_file_read_line
+        copy var:modify_file_descriptor to REG_A
+        copy var:modify_file_counter to REG_B
         copy PROGRAM_COUNTER to var:sys_return
         jump label:sys_fs_read
-        jump_err label:close_modify
+        jump_err label:modify_file_close
 
-        // get first line
-        copy REG_RES to var:read_line
+        // Store the read line
+        copy REG_RES to var:modify_file_read_line
 
-        // successful read
-        copy REG_ERROR to REG_A
-        write "" to REG_B
-        write OP_CMP_EQ to REG_OP
-        cpu_exec
-        jump_if label:modify_fun
-
-        //end_of_file
-        copy REG_RES to REG_A
-        write "EOF" to REG_B
-        write OP_CMP_EQ to REG_OP
-        cpu_exec
-        jump_if_not label:error_modify
-        jump_if label:eof_modify
-
-    label modify_fun
-    // extract first char
-        copy var:read_line to REG_A
+        // Extract first character
+        var modify_file_char
+        copy var:modify_file_read_line to REG_A
         write 1 to REG_B
         write "" to REG_C
         write OP_GET_COLUMN to REG_OP
         cpu_exec
-        copy REG_RES to var:char
-        // check if char is number
-        copy var:char to REG_A
+        copy REG_RES to var:modify_file_char
+
+        // Check if first character is a number
+        copy var:modify_file_char to REG_A
         write OP_IS_NUM to REG_OP
         cpu_exec
-        jump_if_not label:increment_counter
+        jump_if_not label:modify_file_increment_counter
 
-        //increment
-        copy var:char to REG_A
+        // Increment the number
+        copy var:modify_file_char to REG_A
         write OP_INCR to REG_OP
         cpu_exec
-        copy REG_RES to var:char
+        copy REG_RES to var:modify_file_char
 
-        //concat it with read_line
-        copy var:char to REG_D
-        copy var:read_line to REG_A
+        // Create modified line by replacing first character
+        var modify_file_modified_line
+        copy var:modify_file_read_line to REG_A
         write 1 to REG_B
+        copy var:modify_file_char to REG_D
         write "" to REG_C
-        write OP_CONCAT_WITH to REG_OP
+        write OP_REPLACE_COLUMN to REG_OP
         cpu_exec
-        copy REG_RES to var:modified_line
+        copy REG_RES to var:modify_file_modified_line
 
-    label write_to_file_modify
-        copy var:file_descriptor to REG_A
-        copy var:counter to REG_B
-        copy var:modified_line to REG_C
+        // Write modified line back to file
+        copy var:modify_file_descriptor to REG_A
+        copy var:modify_file_counter to REG_B
+        copy var:modify_file_modified_line to REG_C
         copy PROGRAM_COUNTER to var:sys_return
         jump label:sys_fs_write
-        jump label:increment_counter_modify
+        jump_err label:modify_file_close
     
-    label increment_counter_modify
-        copy var:counter to REG_A
+    label modify_file_increment_counter
+        // Move to next line
+        copy var:modify_file_counter to REG_A
         write OP_INCR to REG_OP
         cpu_exec
-        copy REG_RES to var:counter
-        jump label:read_file_modify
+        copy REG_RES to var:modify_file_counter
+        jump label:modify_file_read_loop
 
-    label eof_modify
-        write "1" to REG_RES
-        write "" to REG_ERROR
-        jump label:close
+    label modify_file_error
+        write "Error with modify command" to DISPLAY_BUFFER
+        write COLOR_RED to DISPLAY_COLOR
+        write OP_DISPLAY_LN to REG_OP
+        cpu_exec
+        jump label:modify_file_end
 
-    label error_modify
-        write "0" to REG_RES
-        write "ERROR" to REG_ERROR
-        jump label:close
-
-    label close_modify
-        copy var:file_descriptor to REG_A
+    label modify_file_close
+        // Close the file
+        copy var:modify_file_descriptor to REG_A
         copy PROGRAM_COUNTER to var:sys_return
-        jump label:sys_fs_close 
+        jump label:sys_fs_close
+        
+        // Output success message
+        write "File modified successfully" to DISPLAY_BUFFER
+        write COLOR_GREEN to DISPLAY_COLOR
+        write OP_DISPLAY_LN to REG_OP
+        cpu_exec
+        jump label:kernel_start
+
+    label modify_file_end
         jump label:sys_stack_pop
-    
 
 label kernel_end
     copy REG_ERROR to DISPLAY_BUFFER
